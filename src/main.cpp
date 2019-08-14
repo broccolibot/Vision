@@ -6,13 +6,18 @@
 
 int main(int argc, char** argv) {
     char* config_dir = (char*)"config.yml";
-    if (argc > 1) config_dir = argv[0];
+    if (argc > 1) config_dir = argv[1];
 
-    cv::Mat bgr_frame =
-        cv::imread("/home/duncan/Media/Images/datasets/Rec1/bgr-1532.png");
-    cv::Mat depth_frame =
-        cv::imread("/home/duncan/Media/Images/datasets/Rec1/dep-1532.png", cv::IMREAD_ANYDEPTH | cv::IMREAD_GRAYSCALE);
-    assert(depth_frame.type() == CV_16UC1);
+    if (argc < 3) {
+        std::cout << "Usage: " << argv[0] << " <config.yml> <dataset dir>" << std::endl;
+        return -1;
+    }
+    char* dataset_dir = argv[2];
+
+    int frame_idx = 0;
+    if (argc >= 4) {
+        frame_idx = atoi(argv[3]);
+    }
 
     BroccoliDetector detector;
     
@@ -34,6 +39,8 @@ int main(int argc, char** argv) {
             fs["morph_size"] >> detector.morph_size;
             fs["hist_min"] >> hist_min;
             fs["hist_max"] >> hist_max;
+            fs["min_hsv"] >> detector.min_hsv;
+            fs["max_hsv"] >> detector.max_hsv;
             fs["percentile"] >> percentile;
             fs.release();
         }
@@ -43,9 +50,40 @@ int main(int argc, char** argv) {
 
     PipelineUI ui(pipeline);
 
-    while (cv::waitKey(20) != 'q') {
+    bool oneshot = true;
+    bool paused = false;
+    bool running = true;
+    cv::Mat bgr_frame, depth_frame;
+    while (running) {
+        if (!paused || oneshot) {
+            std::string bgr_frame_dir = std::string(dataset_dir) + "bgr-" + std::to_string(frame_idx) + ".png";
+            std::string depth_frame_dir = std::string(dataset_dir) + "dep-" + std::to_string(frame_idx) + ".png";
+            //std::cout << "BGR: " << bgr_frame_dir << std::endl;
+            //std::cout << "DEPTH: " << depth_frame_dir << std::endl;
+            //std::cout << "Frame: " << frame_idx << std::endl;
+            bgr_frame = cv::imread(bgr_frame_dir);
+            depth_frame = cv::imread(depth_frame_dir, cv::IMREAD_GRAYSCALE | cv::IMREAD_ANYDEPTH);
+            if (!oneshot) frame_idx++;
+            oneshot = false;
+        }
         auto output = pipeline->next_frameset(bgr_frame, depth_frame);
         ui.next_frame(bgr_frame, output);
+        switch (cv::waitKey(20)) {
+            case ' ':
+                paused = !paused;
+                break;
+            case 'h': 
+                if (frame_idx > 0) frame_idx--; 
+                oneshot = true;
+                break;
+            case 'l': 
+                frame_idx++; 
+                oneshot = true;
+                break;
+            case 'q':
+                running = false;
+                break;
+        }
     }
 
     {
@@ -56,6 +94,8 @@ int main(int argc, char** argv) {
             fs << "morph_size" << pipeline->detector.morph_size;
             fs << "hist_min" << hist_min;
             fs << "hist_max" << hist_max;
+            fs << "min_hsv" << pipeline->detector.min_hsv;
+            fs << "max_hsv" << pipeline->detector.max_hsv;
             fs << "percentile" << pipeline->percentile;
             fs.release();
         }
