@@ -14,6 +14,8 @@ class Histogram {
         T take_percentile(float percentile);
         void print();
         void clear();
+        T lower_bound();
+        T upper_bound();
         ~Histogram();
 
         // Safe copy, move
@@ -69,14 +71,16 @@ void Histogram<T>::clear() {
     memset(bins, 0, array_size());
 }
 
-/*
-template <>
-void Histogram<unsigned short>::print() {
-    for (int i = 0; i < bin_count(); i++) {
-        printf("%i: %u\n", i + min_input, bins[i]);
-    }
+
+template <class T>
+T Histogram<T>::lower_bound() {
+    return min_input;
 }
-*/
+
+template <class T>
+T Histogram<T>::upper_bound() {
+    return max_input;
+}
 
 // Internal functions
 template <class T>

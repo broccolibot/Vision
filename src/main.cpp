@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <pipeline.hpp>
 #include <pipeline_ui.hpp>
+#include <motion_server_session.hpp>
 
 int main(int argc, char** argv) {
     char* config_dir = (char*)"config.yml";
@@ -18,6 +19,10 @@ int main(int argc, char** argv) {
     if (argc >= 4) {
         frame_idx = atoi(argv[3]);
     }
+
+    std::string remote_ip = "127.0.0.1";
+    unsigned short remote_port = 5060;
+    std::string motor_name = "debug";
 
     BroccoliDetector detector;
     
@@ -42,9 +47,14 @@ int main(int argc, char** argv) {
             fs["min_hsv"] >> detector.min_hsv;
             fs["max_hsv"] >> detector.max_hsv;
             fs["percentile"] >> percentile;
+            fs["remote_port"] >> remote_port;
+            fs["remote_ip"] >> remote_ip;
+            fs["motor_name"] >> motor_name;
             fs.release();
         }
     }
+
+    MotionServerSession motion_server_session(remote_ip, remote_port, motor_name);
 
     auto pipeline = std::make_shared<Pipeline>(std::move(detector), hist_min, hist_max, percentile);
 
@@ -58,16 +68,20 @@ int main(int argc, char** argv) {
         if (!paused || oneshot) {
             std::string bgr_frame_dir = std::string(dataset_dir) + "bgr-" + std::to_string(frame_idx) + ".png";
             std::string depth_frame_dir = std::string(dataset_dir) + "dep-" + std::to_string(frame_idx) + ".png";
-            //std::cout << "BGR: " << bgr_frame_dir << std::endl;
-            //std::cout << "DEPTH: " << depth_frame_dir << std::endl;
-            //std::cout << "Frame: " << frame_idx << std::endl;
             bgr_frame = cv::imread(bgr_frame_dir);
             depth_frame = cv::imread(depth_frame_dir, cv::IMREAD_GRAYSCALE | cv::IMREAD_ANYDEPTH);
             if (!oneshot) frame_idx++;
             oneshot = false;
         }
+
         auto output = pipeline->next_frameset(bgr_frame, depth_frame);
+
+        if (output.broccoli_was_found) {
+            motion_server_session.set_target(output.broccoli_depth);
+        }
+
         ui.next_frame(bgr_frame, output);
+
         switch (cv::waitKey(20)) {
             case ' ':
                 paused = !paused;
@@ -97,6 +111,9 @@ int main(int argc, char** argv) {
             fs << "min_hsv" << pipeline->detector.min_hsv;
             fs << "max_hsv" << pipeline->detector.max_hsv;
             fs << "percentile" << pipeline->percentile;
+            fs << "remote_port" << remote_port;
+            fs << "remote_ip" << remote_ip;
+            fs << "motor_name" << motor_name;
             fs.release();
         }
     }

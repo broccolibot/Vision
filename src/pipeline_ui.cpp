@@ -20,17 +20,16 @@ void PipelineUI::next_frame(cv::Mat& bgr_frame, PipelineOutput& pipeline_output)
     cv::Mat output_image;
     bgr_frame.copyTo(output_image);
 
-    if (pipeline->detector.record_hsv_thresh)
+    if (pipeline->detector.record_hsv_thresh && !pipeline_output.detector_output.hsv_thresh_out.empty())
         cv::imshow("HSV", pipeline_output.detector_output.hsv_thresh_out);
 
-    if (pipeline->detector.record_laplacian)
+    if (pipeline->detector.record_laplacian && !pipeline_output.detector_output.laplacian_out.empty())
         cv::imshow("Laplacian", pipeline_output.detector_output.laplacian_out);
 
-    if (pipeline->detector.record_morph_blob)
+    if (pipeline->detector.record_morph_blob && !pipeline_output.detector_output.morph_blob_out.empty())
         cv::imshow("Morph", pipeline_output.detector_output.morph_blob_out);
 
     cv::rectangle(output_image, pipeline_output.largest_head.bounds, cv::Scalar(0, 255, 0), 2);
     cv::imshow("Annotated", output_image);
-    std::cout << "Depth: " << pipeline_output.broccoli_depth << std::endl;
-
+    //std::cout << "Depth: " << pipeline_output.broccoli_depth << std::endl;
 }

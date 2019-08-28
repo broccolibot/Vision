@@ -35,7 +35,13 @@ PipelineOutput Pipeline::next_frameset(cv::Mat& bgr_frame, cv::Mat& depth_frame)
     histogram.clear();
     histogram.insert_image(largest_depth);
 
-    output.broccoli_depth = histogram.take_percentile(percentile);
+    unsigned short broccoli_depth = histogram.take_percentile(percentile);
+    output.broccoli_depth = broccoli_depth;
+
+    // The histogram didn't have enough information to decide
+    if (broccoli_depth == histogram.lower_bound()) {
+        output.broccoli_was_found = false;
+    }
 
     return output;
 }

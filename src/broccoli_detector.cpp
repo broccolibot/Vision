@@ -53,7 +53,7 @@ BroccoliDetectorOutput BroccoliDetector::detect_broccoli(cv::Mat& input_frame) {
         cv::Rect2i bounds = boundingRect(contour);
         //unsigned long area = bounds.area();
         int area = bounds.area();
-        if (area >= area_threshold) {
+        if (area >= area_threshold * area_threshold) {
             ScoredHead head;
             head.bounds = bounds;
             head.area = area;
